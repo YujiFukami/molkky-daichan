@@ -46,19 +46,21 @@ export function GameTab() {
 
   return (
     <div className="p-3 space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <PlayerCard
-          player={state.players.A}
-          isCurrent={!state.isGameOver && state.currentTurn === 'A'}
-          missLimit={state.settings.missLimit}
-          winningScore={state.settings.winningScore}
-        />
-        <PlayerCard
-          player={state.players.B}
-          isCurrent={!state.isGameOver && state.currentTurn === 'B'}
-          missLimit={state.settings.missLimit}
-          winningScore={state.settings.winningScore}
-        />
+      <div className="sticky top-0 -mx-3 -mt-3 px-3 pt-3 pb-2 bg-stone-50/95 backdrop-blur-sm z-20 shadow-sm">
+        <div className="grid grid-cols-2 gap-3">
+          <PlayerCard
+            player={state.players.A}
+            isCurrent={!state.isGameOver && state.currentTurn === 'A'}
+            missLimit={state.settings.missLimit}
+            winningScore={state.settings.winningScore}
+          />
+          <PlayerCard
+            player={state.players.B}
+            isCurrent={!state.isGameOver && state.currentTurn === 'B'}
+            missLimit={state.settings.missLimit}
+            winningScore={state.settings.winningScore}
+          />
+        </div>
       </div>
 
       {state.isGameOver ? (

@@ -10,6 +10,9 @@ import type { Pin } from '../domain/types';
 import { useGameStore } from '../store/gameStore';
 
 const TAP_MOVE_THRESHOLD_SQ = 1.5;
+const ZOOM_MIN = 0.55;
+const ZOOM_MAX = 1.0;
+const ZOOM_STEP = 0.05;
 
 interface DragState {
   pinId: number;
@@ -22,9 +25,24 @@ export function PinBoard() {
   const movePin = useGameStore((s) => s.movePin);
   const togglePinStanding = useGameStore((s) => s.togglePinStanding);
 
+  const [zoom, setZoom] = useState<number>(ZOOM_MAX);
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const visibleW = VIEW_W / zoom;
+  const visibleH = VIEW_H / zoom;
+  const offsetX = (visibleW - VIEW_W) / 2;
+  const offsetY = visibleH - VIEW_H;
+  const viewBox = `${-offsetX} ${-offsetY} ${visibleW} ${visibleH}`;
+
+  const pinScale = 1 / zoom;
+  const pinR = PIN_R * pinScale;
+  const fontSize = 4 * pinScale;
+  const haloR = (PIN_R + 1.6) * pinScale;
+  const fallenStrokeW = 0.6 * pinScale;
+  const pinStrokeW = 0.6 * pinScale;
+  const dragStrokeW = 1.2 * pinScale;
 
   const eventToSvg = (
     clientX: number,
@@ -74,46 +92,82 @@ export function PinBoard() {
   };
 
   return (
-    <svg
-      ref={svgRef}
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      className="block w-full h-auto rounded-2xl shadow-md select-none touch-none"
-      style={{ background: '#e8d5b1' }}
-    >
-      <line
-        x1={5}
-        y1={THROWING_LINE_Y}
-        x2={VIEW_W - 5}
-        y2={THROWING_LINE_Y}
-        stroke="#8a5a2b"
-        strokeWidth={0.6}
-        strokeDasharray="2 2"
-      />
-      <text
-        x={VIEW_W / 2}
-        y={THROWING_LINE_Y + 5}
-        textAnchor="middle"
-        fontSize={3}
-        fill="#8a5a2b"
-        fontWeight="bold"
-      >
-        投擲ライン
-      </text>
-      <circle cx={THROWER.x} cy={THROWER.y} r={1} fill="#8a5a2b" />
-
-      {board.pins.map((pin) => (
-        <PinShape
-          key={pin.id}
-          pin={pin}
-          highlighted={highlightedPinIds.includes(pin.id)}
-          isDragging={drag?.pinId === pin.id && drag.hasMoved}
-          onPointerDown={(e) => onPointerDown(e, pin.id)}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerEnd}
-          onPointerCancel={onPointerEnd}
+    <div>
+      <div className="flex items-center gap-2 px-1 mb-1.5">
+        <span className="text-xs text-stone-500 shrink-0">広域</span>
+        <input
+          type="range"
+          min={ZOOM_MIN}
+          max={ZOOM_MAX}
+          step={ZOOM_STEP}
+          value={zoom}
+          onChange={(e) => setZoom(parseFloat(e.target.value))}
+          className="flex-1 accent-molkky-green"
+          aria-label="ズーム"
         />
-      ))}
-    </svg>
+        <span className="text-xs text-stone-500 shrink-0">標準</span>
+        <button
+          type="button"
+          onClick={() => setZoom(ZOOM_MAX)}
+          className="text-xs text-stone-500 underline shrink-0"
+          aria-label="ズームをリセット"
+        >
+          リセット
+        </button>
+      </div>
+
+      <svg
+        ref={svgRef}
+        viewBox={viewBox}
+        className="block w-full h-auto rounded-2xl shadow-md select-none touch-none"
+        style={{ background: '#e8d5b1' }}
+      >
+        <line
+          x1={-offsetX + 5}
+          y1={THROWING_LINE_Y}
+          x2={-offsetX + visibleW - 5}
+          y2={THROWING_LINE_Y}
+          stroke="#8a5a2b"
+          strokeWidth={0.6 * pinScale}
+          strokeDasharray={`${2 * pinScale} ${2 * pinScale}`}
+        />
+        <text
+          x={VIEW_W / 2}
+          y={THROWING_LINE_Y + 5 * pinScale}
+          textAnchor="middle"
+          fontSize={3 * pinScale}
+          fill="#8a5a2b"
+          fontWeight="bold"
+        >
+          投擲ライン
+        </text>
+        <circle
+          cx={THROWER.x}
+          cy={THROWER.y}
+          r={1 * pinScale}
+          fill="#8a5a2b"
+        />
+
+        {board.pins.map((pin) => (
+          <PinShape
+            key={pin.id}
+            pin={pin}
+            highlighted={highlightedPinIds.includes(pin.id)}
+            isDragging={drag?.pinId === pin.id && drag.hasMoved}
+            pinR={pinR}
+            haloR={haloR}
+            fontSize={fontSize}
+            fallenStrokeW={fallenStrokeW}
+            pinStrokeW={pinStrokeW}
+            dragStrokeW={dragStrokeW}
+            onPointerDown={(e) => onPointerDown(e, pin.id)}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerEnd}
+            onPointerCancel={onPointerEnd}
+          />
+        ))}
+      </svg>
+    </div>
   );
 }
 
@@ -121,6 +175,12 @@ interface PinShapeProps {
   pin: Pin;
   highlighted: boolean;
   isDragging: boolean;
+  pinR: number;
+  haloR: number;
+  fontSize: number;
+  fallenStrokeW: number;
+  pinStrokeW: number;
+  dragStrokeW: number;
   onPointerDown: (e: React.PointerEvent<SVGElement>) => void;
   onPointerMove: (e: React.PointerEvent<SVGElement>) => void;
   onPointerUp: (e: React.PointerEvent<SVGElement>) => void;
@@ -131,6 +191,12 @@ function PinShape({
   pin,
   highlighted,
   isDragging,
+  pinR,
+  haloR,
+  fontSize,
+  fallenStrokeW,
+  pinStrokeW,
+  dragStrokeW,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -152,7 +218,7 @@ function PinShape({
         <circle
           cx={pin.x}
           cy={pin.y}
-          r={PIN_R + 1.6}
+          r={haloR}
           fill="none"
           stroke="#f5b400"
           strokeWidth={1.2}
@@ -161,30 +227,30 @@ function PinShape({
       )}
       {!pin.isStanding && (
         <line
-          x1={pin.x - PIN_R}
-          y1={pin.y - PIN_R}
-          x2={pin.x + PIN_R}
-          y2={pin.y + PIN_R}
+          x1={pin.x - pinR}
+          y1={pin.y - pinR}
+          x2={pin.x + pinR}
+          y2={pin.y + pinR}
           stroke="#8a8273"
-          strokeWidth={0.6}
+          strokeWidth={fallenStrokeW}
           opacity={0.6}
         />
       )}
       <circle
         cx={pin.x}
         cy={pin.y}
-        r={PIN_R}
+        r={pinR}
         fill={fill}
         stroke={stroke}
-        strokeWidth={isDragging ? 1.2 : 0.6}
+        strokeWidth={isDragging ? dragStrokeW : pinStrokeW}
         opacity={opacity}
       />
       <text
         x={pin.x}
-        y={pin.y + 0.2}
+        y={pin.y + 0.2 * (fontSize / 4)}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize={4}
+        fontSize={fontSize}
         fontWeight="900"
         fill={pin.isStanding ? 'white' : '#8a8273'}
         style={{ pointerEvents: 'none' }}

@@ -2,7 +2,7 @@ import { THROWER, distance } from './board';
 import type { BoardState, Pin } from './types';
 
 const MIN_DIST = 50;
-const MAX_DIST = 130;
+const MAX_DIST = 220;
 const ISOLATION_REF = 12;
 const CLUSTER_RADIUS = 9;
 const MAX_CLUSTER_SIZE = 4;

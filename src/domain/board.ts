@@ -6,6 +6,11 @@ export const PIN_R = 4;
 export const THROWER = { x: 50, y: 132 };
 export const THROWING_LINE_Y = 128;
 
+export const MIN_X = -60;
+export const MAX_X = VIEW_W + 60;
+export const MIN_Y = -120;
+export const MAX_Y = THROWING_LINE_Y - PIN_R;
+
 const INITIAL_POSITIONS: Record<number, { x: number; y: number }> = {
   7: { x: 40, y: 22 },
   9: { x: 50, y: 22 },
@@ -60,8 +65,8 @@ export function movePin(
   x: number,
   y: number,
 ): BoardState {
-  const cx = clamp(x, PIN_R, VIEW_W - PIN_R);
-  const cy = clamp(y, PIN_R, THROWING_LINE_Y - PIN_R);
+  const cx = clamp(x, MIN_X, MAX_X);
+  const cy = clamp(y, MIN_Y, MAX_Y);
   return {
     ...board,
     pins: board.pins.map((p) => (p.id === pinId ? { ...p, x: cx, y: cy } : p)),
