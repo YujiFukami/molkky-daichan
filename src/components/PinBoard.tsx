@@ -26,6 +26,7 @@ export function PinBoard() {
   const togglePinStanding = useGameStore((s) => s.togglePinStanding);
 
   const [zoom, setZoom] = useState<number>(ZOOM_MAX);
+  const [isCompact, setIsCompact] = useState<boolean>(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -93,33 +94,50 @@ export function PinBoard() {
 
   return (
     <div>
-      <div className="flex items-center gap-2 px-1 mb-1.5">
-        <span className="text-xs text-stone-500 shrink-0">広域</span>
-        <input
-          type="range"
-          min={ZOOM_MIN}
-          max={ZOOM_MAX}
-          step={ZOOM_STEP}
-          value={zoom}
-          onChange={(e) => setZoom(parseFloat(e.target.value))}
-          className="flex-1 accent-molkky-green"
-          aria-label="ズーム"
-        />
-        <span className="text-xs text-stone-500 shrink-0">標準</span>
+      <div className="flex items-center justify-between gap-2 px-1 mb-1.5">
         <button
           type="button"
-          onClick={() => setZoom(ZOOM_MAX)}
-          className="text-xs text-stone-500 underline shrink-0"
-          aria-label="ズームをリセット"
+          onClick={() => setIsCompact((v) => !v)}
+          className="text-xs px-3 py-1 rounded-lg bg-stone-200 text-stone-700 font-bold shrink-0"
         >
-          リセット
+          {isCompact ? '▼ 標準表示' : '▲ 縮小表示'}
         </button>
+        {!isCompact && (
+          <button
+            type="button"
+            onClick={() => setZoom(ZOOM_MAX)}
+            className="text-xs text-stone-500 underline shrink-0"
+            aria-label="ズームをリセット"
+          >
+            ズームリセット
+          </button>
+        )}
       </div>
+
+      {!isCompact && (
+        <div className="flex items-center gap-2 px-1 mb-1.5">
+          <span className="text-xs text-stone-500 shrink-0">広域</span>
+          <input
+            type="range"
+            min={ZOOM_MIN}
+            max={ZOOM_MAX}
+            step={ZOOM_STEP}
+            value={zoom}
+            onChange={(e) => setZoom(parseFloat(e.target.value))}
+            className="flex-1 accent-molkky-green"
+            aria-label="ズーム"
+          />
+          <span className="text-xs text-stone-500 shrink-0">標準</span>
+        </div>
+      )}
 
       <svg
         ref={svgRef}
         viewBox={viewBox}
-        className="block w-full h-auto rounded-2xl shadow-md select-none touch-none"
+        preserveAspectRatio={isCompact ? 'none' : 'xMidYMid meet'}
+        className={`block w-full rounded-2xl shadow-md select-none touch-none ${
+          isCompact ? 'aspect-[100/35]' : 'h-auto'
+        }`}
         style={{ background: '#e8d5b1' }}
       >
         <line
