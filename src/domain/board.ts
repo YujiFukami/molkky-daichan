@@ -2,6 +2,7 @@ import type { BoardState, Pin } from './types';
 
 export const VIEW_W = 100;
 export const VIEW_H = 140;
+export const VIEW_BOTTOM = 80;
 export const PIN_R = 4;
 export const THROWER = { x: 50, y: 132 };
 export const THROWING_LINE_Y = 128;
@@ -9,7 +10,7 @@ export const THROWING_LINE_Y = 128;
 export const MIN_X = -70;
 export const MAX_X = VIEW_W + 70;
 export const MIN_Y = -150;
-export const MAX_Y = THROWING_LINE_Y - PIN_R;
+export const MAX_Y = VIEW_BOTTOM - PIN_R;
 
 const INITIAL_POSITIONS: Record<number, { x: number; y: number }> = {
   7: { x: 40, y: 22 },

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { PIN_R, VIEW_H, VIEW_W } from '../domain/board';
+import { PIN_R, VIEW_BOTTOM, VIEW_H, VIEW_W } from '../domain/board';
 import { easeSinglePin } from '../domain/heuristic';
 import type { Pin } from '../domain/types';
 import { useGameStore } from '../store/gameStore';
@@ -10,12 +10,12 @@ const ZOOM_MAX = 1.0;
 const ZOOM_STEP = 0.05;
 
 const PIN_FONT_SIZE = 4;
+const EASE_FONT_SIZE = 3;
+const EASE_OFFSET = PIN_R + 1.5;
 const HALO_R = PIN_R + 1.6;
 const FALLEN_STROKE_W = 0.6;
 const PIN_STROKE_W = 0.6;
 const DRAG_STROKE_W = 1.2;
-const EASE_FONT_SIZE = 3;
-const EASE_OFFSET = PIN_R + 1.5;
 
 interface DragState {
   pinId: number;
@@ -37,8 +37,12 @@ export function PinBoard() {
   const visibleW = VIEW_W / zoom;
   const visibleH = VIEW_H / zoom;
   const offsetX = (visibleW - VIEW_W) / 2;
-  const offsetY = visibleH - VIEW_H;
-  const viewBox = `${-offsetX} ${-offsetY} ${visibleW} ${visibleH}`;
+  const viewBoxY = VIEW_BOTTOM - visibleH;
+  const viewBox = `${-offsetX} ${viewBoxY} ${visibleW} ${visibleH}`;
+
+  const textScale = 1 / zoom;
+  const fontSize = PIN_FONT_SIZE * textScale;
+  const easeFontSize = EASE_FONT_SIZE * textScale;
 
   const eases = useMemo(() => {
     const result = new Map<number, number>();
@@ -149,6 +153,8 @@ export function PinBoard() {
                 ease={eases.get(pin.id)}
                 highlighted={highlightedPinIds.includes(pin.id)}
                 isDragging={drag?.pinId === pin.id && drag.hasMoved}
+                fontSize={fontSize}
+                easeFontSize={easeFontSize}
                 onPointerDown={(e) => onPointerDown(e, pin.id)}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerEnd}
@@ -173,6 +179,8 @@ interface PinShapeProps {
   ease: number | undefined;
   highlighted: boolean;
   isDragging: boolean;
+  fontSize: number;
+  easeFontSize: number;
   onPointerDown: (e: React.PointerEvent<SVGElement>) => void;
   onPointerMove: (e: React.PointerEvent<SVGElement>) => void;
   onPointerUp: (e: React.PointerEvent<SVGElement>) => void;
@@ -184,6 +192,8 @@ function PinShape({
   ease,
   highlighted,
   isDragging,
+  fontSize,
+  easeFontSize,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -238,7 +248,7 @@ function PinShape({
         y={pin.y + 0.2}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize={PIN_FONT_SIZE}
+        fontSize={fontSize}
         fontWeight="900"
         fill={pin.isStanding ? 'white' : '#8a8273'}
         style={{ pointerEvents: 'none' }}
@@ -251,12 +261,12 @@ function PinShape({
           y={pin.y + EASE_OFFSET}
           textAnchor="middle"
           dominantBaseline="hanging"
-          fontSize={EASE_FONT_SIZE}
+          fontSize={easeFontSize}
           fontWeight="900"
           fill={easeColor(ease!)}
           paintOrder="stroke"
           stroke="white"
-          strokeWidth={EASE_FONT_SIZE * 0.4}
+          strokeWidth={easeFontSize * 0.4}
           strokeLinejoin="round"
           style={{ pointerEvents: 'none' }}
         >
