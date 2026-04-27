@@ -1,19 +1,21 @@
 import { useMemo, useRef, useState } from 'react';
-import {
-  PIN_R,
-  THROWING_LINE_Y,
-  THROWER,
-  VIEW_H,
-  VIEW_W,
-} from '../domain/board';
+import { PIN_R, VIEW_H, VIEW_W } from '../domain/board';
 import { easeSinglePin } from '../domain/heuristic';
 import type { Pin } from '../domain/types';
 import { useGameStore } from '../store/gameStore';
 
 const TAP_MOVE_THRESHOLD_SQ = 1.5;
-const ZOOM_MIN = 0.55;
+const ZOOM_MIN = 0.45;
 const ZOOM_MAX = 1.0;
 const ZOOM_STEP = 0.05;
+
+const PIN_FONT_SIZE = 4;
+const HALO_R = PIN_R + 1.6;
+const FALLEN_STROKE_W = 0.6;
+const PIN_STROKE_W = 0.6;
+const DRAG_STROKE_W = 1.2;
+const EASE_FONT_SIZE = 3;
+const EASE_OFFSET = PIN_R + 1.5;
 
 interface DragState {
   pinId: number;
@@ -37,16 +39,6 @@ export function PinBoard() {
   const offsetX = (visibleW - VIEW_W) / 2;
   const offsetY = visibleH - VIEW_H;
   const viewBox = `${-offsetX} ${-offsetY} ${visibleW} ${visibleH}`;
-
-  const pinScale = 1 / zoom;
-  const pinR = PIN_R * pinScale;
-  const fontSize = 4 * pinScale;
-  const haloR = (PIN_R + 1.6) * pinScale;
-  const fallenStrokeW = 0.6 * pinScale;
-  const pinStrokeW = 0.6 * pinScale;
-  const dragStrokeW = 1.2 * pinScale;
-  const easeFontSize = 3.2 * pinScale;
-  const easeOffset = (PIN_R + 3) * pinScale;
 
   const eases = useMemo(() => {
     const result = new Map<number, number>();
@@ -150,32 +142,6 @@ export function PinBoard() {
             className="block w-full h-auto rounded-2xl shadow-md select-none touch-none"
             style={{ background: '#e8d5b1' }}
           >
-            <line
-              x1={-offsetX + 5}
-              y1={THROWING_LINE_Y}
-              x2={-offsetX + visibleW - 5}
-              y2={THROWING_LINE_Y}
-              stroke="#8a5a2b"
-              strokeWidth={0.6 * pinScale}
-              strokeDasharray={`${2 * pinScale} ${2 * pinScale}`}
-            />
-            <text
-              x={VIEW_W / 2}
-              y={THROWING_LINE_Y + 5 * pinScale}
-              textAnchor="middle"
-              fontSize={3 * pinScale}
-              fill="#8a5a2b"
-              fontWeight="bold"
-            >
-              投擲ライン
-            </text>
-            <circle
-              cx={THROWER.x}
-              cy={THROWER.y}
-              r={1 * pinScale}
-              fill="#8a5a2b"
-            />
-
             {board.pins.map((pin) => (
               <PinShape
                 key={pin.id}
@@ -183,14 +149,6 @@ export function PinBoard() {
                 ease={eases.get(pin.id)}
                 highlighted={highlightedPinIds.includes(pin.id)}
                 isDragging={drag?.pinId === pin.id && drag.hasMoved}
-                pinR={pinR}
-                haloR={haloR}
-                fontSize={fontSize}
-                easeFontSize={easeFontSize}
-                easeOffset={easeOffset}
-                fallenStrokeW={fallenStrokeW}
-                pinStrokeW={pinStrokeW}
-                dragStrokeW={dragStrokeW}
                 onPointerDown={(e) => onPointerDown(e, pin.id)}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerEnd}
@@ -215,14 +173,6 @@ interface PinShapeProps {
   ease: number | undefined;
   highlighted: boolean;
   isDragging: boolean;
-  pinR: number;
-  haloR: number;
-  fontSize: number;
-  easeFontSize: number;
-  easeOffset: number;
-  fallenStrokeW: number;
-  pinStrokeW: number;
-  dragStrokeW: number;
   onPointerDown: (e: React.PointerEvent<SVGElement>) => void;
   onPointerMove: (e: React.PointerEvent<SVGElement>) => void;
   onPointerUp: (e: React.PointerEvent<SVGElement>) => void;
@@ -234,14 +184,6 @@ function PinShape({
   ease,
   highlighted,
   isDragging,
-  pinR,
-  haloR,
-  fontSize,
-  easeFontSize,
-  easeOffset,
-  fallenStrokeW,
-  pinStrokeW,
-  dragStrokeW,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -264,7 +206,7 @@ function PinShape({
         <circle
           cx={pin.x}
           cy={pin.y}
-          r={haloR}
+          r={HALO_R}
           fill="none"
           stroke="#f5b400"
           strokeWidth={1.2}
@@ -273,30 +215,30 @@ function PinShape({
       )}
       {!pin.isStanding && (
         <line
-          x1={pin.x - pinR}
-          y1={pin.y - pinR}
-          x2={pin.x + pinR}
-          y2={pin.y + pinR}
+          x1={pin.x - PIN_R}
+          y1={pin.y - PIN_R}
+          x2={pin.x + PIN_R}
+          y2={pin.y + PIN_R}
           stroke="#8a8273"
-          strokeWidth={fallenStrokeW}
+          strokeWidth={FALLEN_STROKE_W}
           opacity={0.6}
         />
       )}
       <circle
         cx={pin.x}
         cy={pin.y}
-        r={pinR}
+        r={PIN_R}
         fill={fill}
         stroke={stroke}
-        strokeWidth={isDragging ? dragStrokeW : pinStrokeW}
+        strokeWidth={isDragging ? DRAG_STROKE_W : PIN_STROKE_W}
         opacity={opacity}
       />
       <text
         x={pin.x}
-        y={pin.y + 0.2 * (fontSize / 4)}
+        y={pin.y + 0.2}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize={fontSize}
+        fontSize={PIN_FONT_SIZE}
         fontWeight="900"
         fill={pin.isStanding ? 'white' : '#8a8273'}
         style={{ pointerEvents: 'none' }}
@@ -306,15 +248,15 @@ function PinShape({
       {showEase && (
         <text
           x={pin.x}
-          y={pin.y + easeOffset}
+          y={pin.y + EASE_OFFSET}
           textAnchor="middle"
           dominantBaseline="hanging"
-          fontSize={easeFontSize}
+          fontSize={EASE_FONT_SIZE}
           fontWeight="900"
           fill={easeColor(ease!)}
           paintOrder="stroke"
           stroke="white"
-          strokeWidth={easeFontSize * 0.35}
+          strokeWidth={EASE_FONT_SIZE * 0.4}
           strokeLinejoin="round"
           style={{ pointerEvents: 'none' }}
         >

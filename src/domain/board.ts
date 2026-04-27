@@ -6,9 +6,9 @@ export const PIN_R = 4;
 export const THROWER = { x: 50, y: 132 };
 export const THROWING_LINE_Y = 128;
 
-export const MIN_X = -60;
-export const MAX_X = VIEW_W + 60;
-export const MIN_Y = -120;
+export const MIN_X = -70;
+export const MAX_X = VIEW_W + 70;
+export const MIN_Y = -150;
 export const MAX_Y = THROWING_LINE_Y - PIN_R;
 
 const INITIAL_POSITIONS: Record<number, { x: number; y: number }> = {
