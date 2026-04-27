@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   PIN_R,
   THROWING_LINE_Y,
@@ -6,6 +6,7 @@ import {
   VIEW_H,
   VIEW_W,
 } from '../domain/board';
+import { easeSinglePin } from '../domain/heuristic';
 import type { Pin } from '../domain/types';
 import { useGameStore } from '../store/gameStore';
 
@@ -26,7 +27,7 @@ export function PinBoard() {
   const togglePinStanding = useGameStore((s) => s.togglePinStanding);
 
   const [zoom, setZoom] = useState<number>(ZOOM_MAX);
-  const [isCompact, setIsCompact] = useState<boolean>(false);
+  const [isHidden, setIsHidden] = useState<boolean>(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -44,6 +45,18 @@ export function PinBoard() {
   const fallenStrokeW = 0.6 * pinScale;
   const pinStrokeW = 0.6 * pinScale;
   const dragStrokeW = 1.2 * pinScale;
+  const easeFontSize = 3.2 * pinScale;
+  const easeOffset = (PIN_R + 3) * pinScale;
+
+  const eases = useMemo(() => {
+    const result = new Map<number, number>();
+    const standing = board.pins.filter((p) => p.isStanding);
+    for (const pin of standing) {
+      const others = standing.filter((p) => p.id !== pin.id);
+      result.set(pin.id, easeSinglePin(pin, others));
+    }
+    return result;
+  }, [board.pins]);
 
   const eventToSvg = (
     clientX: number,
@@ -97,12 +110,12 @@ export function PinBoard() {
       <div className="flex items-center justify-between gap-2 px-1 mb-1.5">
         <button
           type="button"
-          onClick={() => setIsCompact((v) => !v)}
+          onClick={() => setIsHidden((v) => !v)}
           className="text-xs px-3 py-1 rounded-lg bg-stone-200 text-stone-700 font-bold shrink-0"
         >
-          {isCompact ? '▼ 標準表示' : '▲ 縮小表示'}
+          {isHidden ? '▼ ピン盤を表示' : '▲ ピン盤を非表示'}
         </button>
-        {!isCompact && (
+        {!isHidden && (
           <button
             type="button"
             onClick={() => setZoom(ZOOM_MAX)}
@@ -114,88 +127,99 @@ export function PinBoard() {
         )}
       </div>
 
-      {!isCompact && (
-        <div className="flex items-center gap-2 px-1 mb-1.5">
-          <span className="text-xs text-stone-500 shrink-0">広域</span>
-          <input
-            type="range"
-            min={ZOOM_MIN}
-            max={ZOOM_MAX}
-            step={ZOOM_STEP}
-            value={zoom}
-            onChange={(e) => setZoom(parseFloat(e.target.value))}
-            className="flex-1 accent-molkky-green"
-            aria-label="ズーム"
-          />
-          <span className="text-xs text-stone-500 shrink-0">標準</span>
-        </div>
+      {!isHidden && (
+        <>
+          <div className="flex items-center gap-2 px-1 mb-1.5">
+            <span className="text-xs text-stone-500 shrink-0">広域</span>
+            <input
+              type="range"
+              min={ZOOM_MIN}
+              max={ZOOM_MAX}
+              step={ZOOM_STEP}
+              value={zoom}
+              onChange={(e) => setZoom(parseFloat(e.target.value))}
+              className="flex-1 accent-molkky-green"
+              aria-label="ズーム"
+            />
+            <span className="text-xs text-stone-500 shrink-0">標準</span>
+          </div>
+
+          <svg
+            ref={svgRef}
+            viewBox={viewBox}
+            className="block w-full h-auto rounded-2xl shadow-md select-none touch-none"
+            style={{ background: '#e8d5b1' }}
+          >
+            <line
+              x1={-offsetX + 5}
+              y1={THROWING_LINE_Y}
+              x2={-offsetX + visibleW - 5}
+              y2={THROWING_LINE_Y}
+              stroke="#8a5a2b"
+              strokeWidth={0.6 * pinScale}
+              strokeDasharray={`${2 * pinScale} ${2 * pinScale}`}
+            />
+            <text
+              x={VIEW_W / 2}
+              y={THROWING_LINE_Y + 5 * pinScale}
+              textAnchor="middle"
+              fontSize={3 * pinScale}
+              fill="#8a5a2b"
+              fontWeight="bold"
+            >
+              投擲ライン
+            </text>
+            <circle
+              cx={THROWER.x}
+              cy={THROWER.y}
+              r={1 * pinScale}
+              fill="#8a5a2b"
+            />
+
+            {board.pins.map((pin) => (
+              <PinShape
+                key={pin.id}
+                pin={pin}
+                ease={eases.get(pin.id)}
+                highlighted={highlightedPinIds.includes(pin.id)}
+                isDragging={drag?.pinId === pin.id && drag.hasMoved}
+                pinR={pinR}
+                haloR={haloR}
+                fontSize={fontSize}
+                easeFontSize={easeFontSize}
+                easeOffset={easeOffset}
+                fallenStrokeW={fallenStrokeW}
+                pinStrokeW={pinStrokeW}
+                dragStrokeW={dragStrokeW}
+                onPointerDown={(e) => onPointerDown(e, pin.id)}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerEnd}
+                onPointerCancel={onPointerEnd}
+              />
+            ))}
+          </svg>
+        </>
       )}
-
-      <svg
-        ref={svgRef}
-        viewBox={viewBox}
-        preserveAspectRatio={isCompact ? 'none' : 'xMidYMid meet'}
-        className={`block w-full rounded-2xl shadow-md select-none touch-none ${
-          isCompact ? 'aspect-[100/35]' : 'h-auto'
-        }`}
-        style={{ background: '#e8d5b1' }}
-      >
-        <line
-          x1={-offsetX + 5}
-          y1={THROWING_LINE_Y}
-          x2={-offsetX + visibleW - 5}
-          y2={THROWING_LINE_Y}
-          stroke="#8a5a2b"
-          strokeWidth={0.6 * pinScale}
-          strokeDasharray={`${2 * pinScale} ${2 * pinScale}`}
-        />
-        <text
-          x={VIEW_W / 2}
-          y={THROWING_LINE_Y + 5 * pinScale}
-          textAnchor="middle"
-          fontSize={3 * pinScale}
-          fill="#8a5a2b"
-          fontWeight="bold"
-        >
-          投擲ライン
-        </text>
-        <circle
-          cx={THROWER.x}
-          cy={THROWER.y}
-          r={1 * pinScale}
-          fill="#8a5a2b"
-        />
-
-        {board.pins.map((pin) => (
-          <PinShape
-            key={pin.id}
-            pin={pin}
-            highlighted={highlightedPinIds.includes(pin.id)}
-            isDragging={drag?.pinId === pin.id && drag.hasMoved}
-            pinR={pinR}
-            haloR={haloR}
-            fontSize={fontSize}
-            fallenStrokeW={fallenStrokeW}
-            pinStrokeW={pinStrokeW}
-            dragStrokeW={dragStrokeW}
-            onPointerDown={(e) => onPointerDown(e, pin.id)}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerEnd}
-            onPointerCancel={onPointerEnd}
-          />
-        ))}
-      </svg>
     </div>
   );
 }
 
+function easeColor(ease: number): string {
+  if (ease >= 0.7) return '#15803d';
+  if (ease >= 0.4) return '#b45309';
+  return '#b91c1c';
+}
+
 interface PinShapeProps {
   pin: Pin;
+  ease: number | undefined;
   highlighted: boolean;
   isDragging: boolean;
   pinR: number;
   haloR: number;
   fontSize: number;
+  easeFontSize: number;
+  easeOffset: number;
   fallenStrokeW: number;
   pinStrokeW: number;
   dragStrokeW: number;
@@ -207,11 +231,14 @@ interface PinShapeProps {
 
 function PinShape({
   pin,
+  ease,
   highlighted,
   isDragging,
   pinR,
   haloR,
   fontSize,
+  easeFontSize,
+  easeOffset,
   fallenStrokeW,
   pinStrokeW,
   dragStrokeW,
@@ -223,6 +250,7 @@ function PinShape({
   const fill = pin.isStanding ? '#c98e57' : '#bcb09a';
   const stroke = pin.isStanding ? '#7c4a1c' : '#8a8273';
   const opacity = pin.isStanding ? 1 : 0.55;
+  const showEase = pin.isStanding && ease !== undefined;
 
   return (
     <g
@@ -275,6 +303,24 @@ function PinShape({
       >
         {pin.id}
       </text>
+      {showEase && (
+        <text
+          x={pin.x}
+          y={pin.y + easeOffset}
+          textAnchor="middle"
+          dominantBaseline="hanging"
+          fontSize={easeFontSize}
+          fontWeight="900"
+          fill={easeColor(ease!)}
+          paintOrder="stroke"
+          stroke="white"
+          strokeWidth={easeFontSize * 0.35}
+          strokeLinejoin="round"
+          style={{ pointerEvents: 'none' }}
+        >
+          {Math.round(ease! * 100)}%
+        </text>
+      )}
     </g>
   );
 }

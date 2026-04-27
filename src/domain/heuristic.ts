@@ -3,9 +3,12 @@ import type { BoardState, Pin } from './types';
 
 const MIN_DIST = 50;
 const MAX_DIST = 220;
-const ISOLATION_REF = 12;
 const CLUSTER_RADIUS = 9;
 const MAX_CLUSTER_SIZE = 4;
+
+const LANE_WIDTH = 10;
+const BEHIND_REF = 25;
+const FRONT_BLOCK_FACTOR = 0.55;
 
 function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
@@ -16,15 +19,44 @@ function distanceFactor(target: { x: number; y: number }): number {
   return clamp01((MAX_DIST - d) / (MAX_DIST - MIN_DIST));
 }
 
-export function easeSinglePin(pin: Pin, otherStanding: Pin[]): number {
-  const distFactor = distanceFactor(pin);
+function trajectoryRisk(target: Pin, other: Pin): number {
+  const dx = target.x - THROWER.x;
+  const dy = target.y - THROWER.y;
+  const targetDist = Math.hypot(dx, dy);
+  if (targetDist < 0.001) return 0;
+
+  const dirX = dx / targetDist;
+  const dirY = dy / targetDist;
+
+  const px = other.x - THROWER.x;
+  const py = other.y - THROWER.y;
+  const t = px * dirX + py * dirY;
+  if (t < 0) return 0;
+
+  const lat = Math.abs(px * dirY - py * dirX);
+  const inLane = clamp01(1 - lat / LANE_WIDTH);
+  if (inLane <= 0) return 0;
+
+  if (t < targetDist) {
+    return inLane * FRONT_BLOCK_FACTOR;
+  }
+
+  const behindDist = t - targetDist;
+  const behindFactor = clamp01(1 - behindDist / BEHIND_REF);
+  return inLane * behindFactor;
+}
+
+export function easeSinglePin(target: Pin, otherStanding: Pin[]): number {
+  const distFactor = distanceFactor(target);
   if (otherStanding.length === 0) return distFactor;
 
-  const minNeighborDist = Math.min(
-    ...otherStanding.map((p) => distance(p, pin)),
-  );
-  const isolationFactor = clamp01(minNeighborDist / ISOLATION_REF);
-  return 0.5 * distFactor + 0.5 * isolationFactor;
+  let maxRisk = 0;
+  for (const other of otherStanding) {
+    const r = trajectoryRisk(target, other);
+    if (r > maxRisk) maxRisk = r;
+  }
+
+  return distFactor * (1 - maxRisk);
 }
 
 export function easeCluster(cluster: Pin[]): number {

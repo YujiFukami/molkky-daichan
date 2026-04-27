@@ -84,7 +84,7 @@ export function SettingsTab() {
       </section>
 
       <section className="card bg-stone-100 text-xs text-stone-600 leading-relaxed">
-        <div className="font-bold text-stone-700 mb-1">モルック大ちゃん v0.2.0 (Phase 1)</div>
+        <div className="font-bold text-stone-700 mb-1">モルック大ちゃん v0.3.0 (Phase 1.1)</div>
         <p>今後のフェーズ追加予定: 作戦提示UI改善、複数人対戦、AI推奨モード（強化学習）。</p>
       </section>
     </div>
