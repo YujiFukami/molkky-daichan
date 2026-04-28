@@ -143,7 +143,7 @@ export function PinBoard() {
           <svg
             ref={svgRef}
             viewBox={viewBox}
-            className="block w-full h-auto rounded-2xl shadow-md select-none touch-none"
+            className="block w-full h-auto rounded-2xl shadow-md select-none touch-pan-y"
             style={{ background: '#e8d5b1' }}
           >
             {board.pins.map((pin) => (
@@ -206,7 +206,7 @@ function PinShape({
 
   return (
     <g
-      style={{ cursor: 'grab' }}
+      style={{ cursor: 'grab', touchAction: 'none' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

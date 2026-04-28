@@ -50,13 +50,13 @@ export function easeSinglePin(target: Pin, otherStanding: Pin[]): number {
   const distFactor = distanceFactor(target);
   if (otherStanding.length === 0) return distFactor;
 
-  let maxRisk = 0;
+  let safetyProduct = 1;
   for (const other of otherStanding) {
     const r = trajectoryRisk(target, other);
-    if (r > maxRisk) maxRisk = r;
+    safetyProduct *= 1 - r;
   }
 
-  return distFactor * (1 - maxRisk);
+  return distFactor * safetyProduct;
 }
 
 export function easeCluster(cluster: Pin[]): number {
